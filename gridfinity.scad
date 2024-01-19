@@ -8,6 +8,7 @@ gridH = 7;
 BinCornerRadius = 4;
 BinTopTrim = 0.5;
 BaseHeight = 5; // Tray height
+FloorThickness = 1;
 
 WallThickness = 2.4;
 InternalWallThickness = 1.0;
@@ -16,8 +17,8 @@ ToeW = 0.8;
 TextSize = 10;
 
 // Tabs
-tabHeight = 13;
-tabWidth = 15.85;
+tabHeight = 10;
+tabWidth = 13;
 
 // Scoop
 fingerRadius = 12;
@@ -110,8 +111,8 @@ echo("string: ", labels);
 */
 }
 
-DynamicBin(3,1,3,2, "rather very long test text. A bit of an essay.");
-translate([0,50,0]) DynamicBin(3,1,3,2, ["left","right"]);
+//DynamicBin(3,1,3,2, "rather very long test text. A bit of an essay.");
+DynamicBin(3,1,3,2, ["M8 8","M8 12"]);
 
 module capsule(c, r) {
 	translate([r,r,r]) minkowski() {
@@ -170,8 +171,9 @@ module plug(x, y, z, label, tabstyle=0) {
 	tabw = tabstyle==5? 0 : tabWidth;
 	difference() {
 		union() {
-			capsule([x,y,z+BaseHeight],InsideFilletRadius);
+			translate([0,0,FloorThickness]) capsule([x,y,z/*+BaseHeight*/-FloorThickness],InsideFilletRadius);
 			translate([0,0,z-InsideFilletRadius]) mouth(x,y,tabw);
+			translate([0,0,z-InsideFilletRadius]) mouth(x,tabw,0);
 		}
 
 		union() {
@@ -180,7 +182,6 @@ module plug(x, y, z, label, tabstyle=0) {
 		}
 	}
 }
-/*
-translate([0,150,0]) plug(40,40,21, "Test");
-translate([50,100,0]) tab(40,40,21,"test");
-*/
+
+//translate([0,150,0]) plug(40,40,21, "Test");
+//translate([50,100,0]) tab(40,40,21,"test");
