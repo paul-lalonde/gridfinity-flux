@@ -11,3 +11,5 @@ Supports text labels on the bin tabs, or one label across all bin tabs.
 
 Currently only supports bin tabs that are full-width.
 
+## Thanks
+It's hard to measure fonts in OpenSCAD.  Thanks to Alexander Pruss who made this much easier with https://www.thingiverse.com/thing:3004457.  
