@@ -1,4 +1,4 @@
-#A re-implementation of gridfinity for OpenSCAD.
+# A re-implementation of gridfinity for OpenSCAD.
 
 Inspired by https://github.com/kennetek/gridfinity-rebuilt-openscad, this version is more
 limited but seems to perform a bit better in stl output time.
