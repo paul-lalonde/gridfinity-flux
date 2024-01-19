@@ -9,27 +9,29 @@ BinCornerRadius = 4;
 BinTopTrim = 0.5;
 BaseHeight = 5; // Tray height
 
-TW = 2.4;
+WallThickness = 2.4;
+InternalWallThickness = 1.0;
 ToeW = 0.8;
 
+TextSize = 10;
+
 // Tabs
-tabHeight = 15.85;
-tabWidth = 13;
+tabHeight = 13;
+tabWidth = 15.85;
 
 // Scoop
 fingerRadius = 12;
 
 
-InsideFilletRadius = 2.8;
-WallThickness = 1;
+InsideFilletRadius = BinCornerRadius - WallThickness;
 
 DetailLevel = 36;
 Epsilon = 0.0001;
 
 $fn = DetailLevel;
 
-corner_profile = [ [BinCornerRadius, gridH], [0, gridH], [0, BaseHeight], [TW, BaseHeight-TW], [TW, ToeW], [TW + ToeW, 0], [BinCornerRadius, 0] ];
-profile = [ [gridDim/2, gridH], [0, gridH], [0, BaseHeight], [TW, BaseHeight-TW], [TW, ToeW], [TW + ToeW, 0], [gridDim/2, 0] ];
+corner_profile = [ [BinCornerRadius, gridH], [0, gridH], [0, BaseHeight], [WallThickness, BaseHeight-WallThickness], [WallThickness, ToeW], [WallThickness + ToeW, 0], [BinCornerRadius, 0] ];
+profile = [ [gridDim/2, gridH], [0, gridH], [0, BaseHeight], [WallThickness, BaseHeight-WallThickness], [WallThickness, ToeW], [WallThickness + ToeW, 0], [gridDim/2, 0] ];
 
 module trayBinEdge(nX, thick=1) {
 	 blockLen = (nX * gridDim) - 2 * BinCornerRadius;
@@ -62,18 +64,16 @@ module GridKeyShape(nX, nY) {
 	        translate([0, nY * gridDim, 0]) rotate([0,0,-90]) trayBinEdge(nX);
 }
 
-module DynamicBin(nX, nY, nZ) {
-	union() {
+module BinBricks(nX, nY, nZ) {
 	difference() {
 		union() {
-	    			for (x = [0 : 1: nX-1] ) 
-	       			 for (y = [ 0 : 1 : nY-1])
-	            				translate([x * gridDim, y * gridDim, 0]) GridKeyShape(1,1);
+	    		for (x = [0 : 1: nX-1] ) 
+	       			for (y = [ 0 : 1 : nY-1])
+	            			translate([x * gridDim, y * gridDim, 0]) GridKeyShape(1,1);
 			translate([0,0,BaseHeight]) linear_extrude(nZ* gridH) BinProfile(nX * gridDim, nY* gridDim);
-	    		}
-		//translate([0,0,BaseHeight]) cube([nX * gridDim+Epsilon, nY* gridDim + Epsilon, gridH]);
-	}
-	    translate([0,0,BaseHeight + nZ * gridH]) BinTop(nX, nY);
+	    		translate([0,0,BaseHeight + nZ * gridH]) BinTop(nX, nY);
+	    	}
+		children();
 	}
 }
 
@@ -88,10 +88,30 @@ module Tray(nX, nZ) {
 	    }
 }
 
-difference() {
-	DynamicBin(3, 1, 3);
-	translate([WallThickness,WallThickness,BaseHeight+1]) plug(40, 40, 3*gridH);
+module DynamicBin(nX, nY, nZ, divX, labels) {
+	internal_wall_space = (divX - 1)*InternalWallThickness;
+	bucket_space = nX * gridDim - 2 * WallThickness - internal_wall_space;
+	bucket_width = bucket_space / divX;
+
+	BinBricks(nX, nY, nZ) union() {
+		for(x = [0:1:divX-1]) {
+			offset = WallThickness + x * ( InternalWallThickness + bucket_width );
+	  		translate([offset,WallThickness,BaseHeight]) plug(bucket_width, gridDim-2*WallThickness, 3*gridH, is_list(labels)?labels[x]:"");
+		}
+		if (is_string(labels)) {
+			translate([nX * gridDim / 2,TextSize + WallThickness+(tabWidth-TextSize)/2,BaseHeight + nZ * gridH - 1]) labelText(labels);
+		}
+	}
+/*
+		if (is_string(labels)) {
+echo("string: ", labels);
+			translate([nX * gridDim / 2,TextSize + WallThickness+(tabWidth-TextSize)/2,BaseHeight + nZ * gridH - 1]) labelText(labels);
+		}
+*/
 }
+
+DynamicBin(3,1,3,2, "test");
+translate([0,50,0]) DynamicBin(3,1,3,2, ["left","right"]);
 
 module capsule(c, r) {
 	translate([r,r,r]) minkowski() {
@@ -107,10 +127,17 @@ module cylCapsule(l, r, f) {
 	}
 }
 
+module tab(maxLength, height, tabstyle, label) {
+	tabProfile = [ [-BaseHeight,0], [tabHeight, 0], [InsideFilletRadius/2, tabWidth], [-BaseHeight, tabWidth] ];
+ 	translate([0,0,height]) rotate([0,90,0]) {
+		difference() {
+			linear_extrude(height = maxLength) polygon(tabProfile);
 
-module tab(maxLength, height, tabstyle) {
-	tabProfile = [ [0,0], [tabWidth, 0], [0, tabHeight] ];
- 	translate([0,0,height]) rotate([0,90,0]) linear_extrude(height = maxLength) polygon(tabProfile);
+			translate([0.6,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label);
+		}
+//		translate([0,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label);
+	}
+	
 }
 
 module finger(length, y, radius) {
@@ -121,18 +148,36 @@ module finger(length, y, radius) {
 		}
 }
 
+module mouth(x, y, yoffset) {
+	translate([InsideFilletRadius,InsideFilletRadius+yoffset,0])linear_extrude(BaseHeight) minkowski() {
+		square([x-2*InsideFilletRadius, y-yoffset-2*InsideFilletRadius]);
+		circle(InsideFilletRadius);
+	}		
+}
+
+// zoffset should be the top of the tab
+module labelText(label) {
+	rotate([0,0,180]) linear_extrude(height = BaseHeight) text(text=label,halign="center",size=TextSize);
+}
+
 // Assemble the plugs we use to scoop out the insides of the bins.
 // Parameterized in mm of total size to use up.  Caller is responsible for placing at the right offset.
 // 0:Full,1:Auto,2:Left,3:Center,4:Right,5:None 
-module plug(x, y, z, tabstyle) {
+module plug(x, y, z, label, tabstyle=0) {
+	tabw = tabstyle==5? 0 : tabWidth;
 	difference() {
-		capsule([x,y,z],InsideFilletRadius);
+		union() {
+			capsule([x,y,z+BaseHeight],InsideFilletRadius);
+			translate([0,0,z-InsideFilletRadius]) mouth(x,y,tabw);
+		}
 
 		union() {
-			tab(x, z, tabstyle);
+			tab(x, z, tabstyle, label);
 			finger(x, y, fingerRadius);
 		}
 	}
 }
-
-translate([50,50,0]) plug(40,40,14);
+/*
+translate([0,150,0]) plug(40,40,21, "Test");
+translate([50,100,0]) tab(40,40,21,"test");
+*/
