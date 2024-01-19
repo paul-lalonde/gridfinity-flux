@@ -1,7 +1,7 @@
 // gridfinity: 42mm by 7mm.abs
 //
 // We build in the X, Y plane with Z up.
-
+include <fontmetrics.scad>
 // External features
 gridDim = 42;
 gridH = 7;
@@ -96,10 +96,10 @@ module DynamicBin(nX, nY, nZ, divX, labels) {
 	BinBricks(nX, nY, nZ) union() {
 		for(x = [0:1:divX-1]) {
 			offset = WallThickness + x * ( InternalWallThickness + bucket_width );
-	  		translate([offset,WallThickness,BaseHeight]) plug(bucket_width, gridDim-2*WallThickness, 3*gridH, is_list(labels)?labels[x]:"");
+	  		translate([offset,WallThickness,BaseHeight]) plug(bucket_width, gridDim-2*WallThickness, 3*gridH, is_list(labels)?labels[(divX-1)-x]:"");
 		}
 		if (is_string(labels)) {
-			translate([nX * gridDim / 2,TextSize + WallThickness+(tabWidth-TextSize)/2,BaseHeight + nZ * gridH - 1]) labelText(labels);
+			translate([nX * gridDim / 2,TextSize + WallThickness+(tabWidth-TextSize)/2,BaseHeight + nZ * gridH - 1]) labelText(labels, nX * gridDim - 3 * WallThickness );
 		}
 	}
 /*
@@ -110,7 +110,7 @@ echo("string: ", labels);
 */
 }
 
-DynamicBin(3,1,3,2, "test");
+DynamicBin(3,1,3,2, "rather very long test text. A bit of an essay.");
 translate([0,50,0]) DynamicBin(3,1,3,2, ["left","right"]);
 
 module capsule(c, r) {
@@ -133,9 +133,9 @@ module tab(maxLength, height, tabstyle, label) {
 		difference() {
 			linear_extrude(height = maxLength) polygon(tabProfile);
 
-			translate([0.6,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label);
+			translate([0.6,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label, maxLength);
 		}
-//		translate([0,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label);
+//		translate([0,TextSize + (tabWidth-TextSize)/2,maxLength / 2]) rotate([0,-90,0]) labelText(label, maxLength);
 	}
 	
 }
@@ -156,8 +156,11 @@ module mouth(x, y, yoffset) {
 }
 
 // zoffset should be the top of the tab
-module labelText(label) {
-	rotate([0,0,180]) linear_extrude(height = BaseHeight) text(text=label,halign="center",size=TextSize);
+module labelText(label, maxwidth) {
+	width = measureText(text=label, font="Liberation Sans", size=TextSize);
+	textSize = (width > maxwidth) ? TextSize * maxwidth/width: TextSize;
+echo(width, maxwidth, textSize, measureText(text=label, font="Liberation Sans", size=textSize));
+	rotate([0,0,180]) linear_extrude(height = BaseHeight) text(text=label,halign="center", font="Liberation Sans",size=textSize);
 }
 
 // Assemble the plugs we use to scoop out the insides of the bins.
